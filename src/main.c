@@ -12,6 +12,7 @@ int bwtcmp(const void *a, const void *b)
    for (int i = 0; i < bwtlen; i++) {
       unsigned char c1 = (unsigned char)bwtptr[(idx1 + i) % bwtlen];
       unsigned char c2 = (unsigned char)bwtptr[(idx2 + i) % bwtlen];
+
       if (c1 != c2) {
          return c1 - c2;
       }
@@ -47,8 +48,24 @@ void fbwtenc(FILE *in, FILE *out)
 
    fwrite(&idx_primary, sizeof(int), 1, out);
 
+   unsigned char dict[256];
+   for (int i = 0; i < 256; i++) {
+      dict[i] = (unsigned char)i;
+   }
+
    for (int i = 0; i < n; i++) {
-      fputc(s[(idxs[i] + n - 1) % n], out);
+      unsigned char c = (unsigned char)s[(idxs[i] + n - 1) % n];
+      int rank        = 0;
+      while (dict[rank] != c) {
+         rank++;
+      }
+
+      fputc(rank, out); 
+
+      if (rank > 0) {
+         memmove(&dict[1], &dict[0], rank);
+         dict[0] = c;
+      }
    }
 
    free(s);
@@ -66,8 +83,25 @@ void fbwtdec(FILE *in, FILE *out)
    int n = (int)ftell(in) - sizeof(int);
    fseek(in, sizeof(int), SEEK_SET);
 
-   unsigned char *r = malloc(n);
-   fread(r, 1, n, in);
+   unsigned char *mtfin = malloc(n);
+   fread(mtfin, 1, n, in);
+
+   unsigned char *r = malloc(n); 
+   unsigned char dict[256];
+   for (int i = 0; i < 256; i++) {
+      dict[i] = (unsigned char)i;
+   }
+
+   for (int i = 0; i < n; i++) {
+      int rank        = mtfin[i];
+      unsigned char c = dict[rank];
+      r[i]            = c;
+
+      if (rank > 0) {
+         memmove(&dict[1], &dict[0], rank);
+         dict[0] = c;
+      }
+   }
 
    int count[256] = { 0 }, first[256], crntcount[256] = { 0 };
    for (int i = 0; i < n; i++) {
@@ -94,22 +128,26 @@ void fbwtdec(FILE *in, FILE *out)
 
    free(T);
    free(r);
+   free(mtfin);
 }
 
 int main(void)
 {
-   FILE *fin  = fopen("test.png", "rb");
-   FILE *fenc = fopen("test.bwt", "wb");
+   FILE *fin = fopen("test.png", "rb");
+   if (!fin) {
+      return 1;
+   }
+   FILE *fenc = fopen("test.barc", "wb");
    fbwtenc(fin, fenc);
    fclose(fin);
    fclose(fenc);
 
-   FILE *fbwt = fopen("test.bwt", "rb");
+   FILE *fbwt = fopen("test.barc", "rb");
    FILE *fdec = fopen("decoded.png", "wb");
    fbwtdec(fbwt, fdec);
    fclose(fbwt);
    fclose(fdec);
 
-   printf("DONE\n");
-   return 42;
+   printf("SUCCESS\n");
+   return 0;
 }

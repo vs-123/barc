@@ -2,9 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define STX 0x02
-#define ETX 0x03
-
 static const char *bwtptr;
 static int bwtlen;
 
@@ -22,55 +19,59 @@ int bwtcmp(const void *a, const void *b)
    return 0;
 }
 
-void fbwtenc(FILE *in, FILE *out, char chrstart, char chrend)
-{
-   fseek(in, 0, SEEK_END);
-   long inplen = ftell(in);
-   rewind(in);
-
-   int outlen = (int)inplen + 2;
-   char *s    = malloc(outlen + 1);
-
-   s[0] = chrstart;
-   fread(s + 1, 1, inplen, in);
-   s[outlen - 1] = chrend;
-   s[outlen]     = '\0';
-
-   int *indices = malloc(outlen * sizeof(int));
-   for (int i = 0; i < outlen; i++) {
-      indices[i] = i;
-   }
-
-   bwtptr = s;
-   bwtlen = outlen;
-   qsort(indices, outlen, sizeof(int), bwtcmp);
-
-   for (int i = 0; i < outlen; i++) {
-      int idxlastchr = (indices[i] + outlen - 1) % outlen;
-      fputc(s[idxlastchr], out);
-   }
-
-   free(s);
-   free(indices);
-}
-
-void fbwtdec(FILE *in, FILE *out, char chrstart, char chrend)
+void fbwtenc(FILE *in, FILE *out)
 {
    fseek(in, 0, SEEK_END);
    int n = (int)ftell(in);
    rewind(in);
 
-   if (n <= 2) {
+   char *s = malloc(n);
+   fread(s, 1, n, in);
+
+   int *idxs = malloc(n * sizeof(int));
+   for (int i = 0; i < n; i++) {
+      idxs[i] = i;
+   }
+
+   bwtptr = s;
+   bwtlen = n;
+   qsort(idxs, n, sizeof(int), bwtcmp);
+
+   int idx_primary = 0;
+   for (int i = 0; i < n; i++) {
+      if (idxs[i] == 0) {
+         idx_primary = i;
+         break;
+      }
+   }
+
+   fwrite(&idx_primary, sizeof(int), 1, out);
+
+   for (int i = 0; i < n; i++) {
+      fputc(s[(idxs[i] + n - 1) % n], out);
+   }
+
+   free(s);
+   free(idxs);
+}
+
+void fbwtdec(FILE *in, FILE *out)
+{
+   int idx_primary;
+   if (fread(&idx_primary, sizeof(int), 1, in) != 1) {
       return;
    }
 
-   char *r = malloc(n + 1);
+   fseek(in, 0, SEEK_END);
+   int n = (int)ftell(in) - sizeof(int);
+   fseek(in, sizeof(int), SEEK_SET);
+
+   unsigned char *r = malloc(n);
    fread(r, 1, n, in);
-   r[n] = '\0';
 
    int count[256] = { 0 }, first[256], crntcount[256] = { 0 };
    for (int i = 0; i < n; i++) {
-      count[(unsigned char)r[i]]++;
+      count[r[i]]++;
    }
 
    int sum = 0;
@@ -81,24 +82,14 @@ void fbwtdec(FILE *in, FILE *out, char chrstart, char chrend)
 
    int *T = malloc(n * sizeof(int));
    for (int i = 0; i < n; i++) {
-      unsigned char c                = (unsigned char)r[i];
-      T[first[c] + crntcount[c]] = i;
-      crntcount[c]++;
+      T[first[r[i]] + crntcount[r[i]]] = i;
+      crntcount[r[i]]++;
    }
 
-   int curr = -1;
+   int crnt = T[idx_primary];
    for (int i = 0; i < n; i++) {
-      if (r[i] == chrstart) {
-         curr = i;
-         break;
-      }
-   }
-
-   for (int i = 0; i < n; i++) {
-      if (r[curr] != chrstart && r[curr] != chrend) {
-         fputc(r[curr], out);
-      }
-      curr = T[curr];
+      fputc(r[crnt], out);
+      crnt = T[crnt];
    }
 
    free(T);
@@ -107,18 +98,18 @@ void fbwtdec(FILE *in, FILE *out, char chrstart, char chrend)
 
 int main(void)
 {
-   FILE *fin  = fopen("test.txt", "rb");
+   FILE *fin  = fopen("test.png", "rb");
    FILE *fenc = fopen("test.bwt", "wb");
-   fbwtenc(fin, fenc, STX, ETX);
+   fbwtenc(fin, fenc);
    fclose(fin);
    fclose(fenc);
 
    FILE *fbwt = fopen("test.bwt", "rb");
-   FILE *fdec = fopen("decoded.txt", "wb");
-   fbwtdec(fbwt, fdec, STX, ETX);
+   FILE *fdec = fopen("decoded.png", "wb");
+   fbwtdec(fbwt, fdec);
    fclose(fbwt);
    fclose(fdec);
 
    printf("DONE\n");
-   return 0;
+   return 42;
 }

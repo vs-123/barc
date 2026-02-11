@@ -1,0 +1,8 @@
+BasedOnStyle: WebKit
+AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: true
+AllowShortFunctionsOnASingleLine: false
+PointerAlignment: Right
+IndentWidth: 3
+ColumnLimit: 100
+InsertBraces: true

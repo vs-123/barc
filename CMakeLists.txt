@@ -8,5 +8,5 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(SRCS "src/main.c")
 
-add_executable(barc-app ${SRCS})
-target_compile_options(barc-app PRIVATE -Wall -Wextra -Wpedantic)
+add_executable(barc ${SRCS})
+target_compile_options(barc PRIVATE -Wall -Wextra -Wpedantic)

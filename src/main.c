@@ -5,15 +5,31 @@
 void
 rlewrite (unsigned char c, int count, FILE *out)
 {
-   while (count > 255)
+   while (count > 0)
       {
-         fputc (255, out);
-         fputc (c, out);
-         count -= 255;
-      }
+         if (count == 1)
+            {
+               fputc (c, out);
+               count = 0;
+            }
+         else
+            {
+               fputc (c, out);
+               fputc (c, out);
+               count -= 2;
 
-   fputc (count, out);
-   fputc (c, out);
+               if (count > 255)
+                  {
+                     fputc (255, out);
+                     count -= 255;
+                  }
+               else
+                  {
+                     fputc (count, out);
+                     count = 0;
+                  }
+            }
+      }
 }
 
 static const char *bwtptr;
@@ -37,7 +53,6 @@ bwtcmp (const void *a, const void *b)
                return c1 - c2;
             }
       }
-
    return 0;
 }
 
@@ -103,6 +118,7 @@ fbwtenc (FILE *in, FILE *out)
             }
 
          mtfval = (unsigned char)rank;
+
          if (i == 0)
             {
                lastc  = mtfval;
@@ -119,6 +135,7 @@ fbwtenc (FILE *in, FILE *out)
                rlecnt = 1;
             }
       }
+
    rlewrite (lastc, rlecnt, out);
 
    free (s);
@@ -128,7 +145,7 @@ fbwtenc (FILE *in, FILE *out)
 void
 fbwtdec (FILE *in, FILE *out)
 {
-   int primidx, count, c, rank, sum, crnt;
+   int primidx, c, rank, sum, crnt, extra, lastc, haslast;
    size_t cap, n, i, k;
    unsigned char *r;
    unsigned char dict[256];
@@ -142,21 +159,40 @@ fbwtdec (FILE *in, FILE *out)
          return;
       }
 
-   cap = 1024;
-   n   = 0;
-   r   = malloc (cap);
+   cap     = 1024;
+   n       = 0;
+   r       = malloc (cap);
+   lastc   = -1;
+   haslast = 0;
 
-   while ((count = fgetc (in)) != EOF)
+   while ((c = fgetc (in)) != EOF)
       {
-         c = fgetc (in);
-         for (k = 0; k < (size_t)count; k++)
+         if (n >= cap)
             {
-               if (n >= cap)
+               cap *= 2;
+               r = realloc (r, cap);
+            }
+         r[n++] = (unsigned char)c;
+
+         if (haslast && c == lastc)
+            {
+               extra = fgetc (in);
+               for (k = 0; k < (size_t)extra; k++)
                   {
-                     cap *= 2;
-                     r = realloc (r, cap);
+                     if (n >= cap)
+                        {
+                           cap *= 2;
+                           r = realloc (r, cap);
+                        }
+                     r[n++] = (unsigned char)c;
                   }
-               r[n++] = (unsigned char)c;
+               haslast = 0;
+               lastc   = -1;
+            }
+         else
+            {
+               lastc   = c;
+               haslast = 1;
             }
       }
 
@@ -164,16 +200,15 @@ fbwtdec (FILE *in, FILE *out)
       {
          dict[i] = (unsigned char)i;
       }
-
    for (i = 0; i < n; i++)
       {
          rank = r[i];
          c    = dict[rank];
-         r[i] = c;
+         r[i] = (unsigned char)c;
          if (rank > 0)
             {
                memmove (&dict[1], &dict[0], rank);
-               dict[0] = c;
+               dict[0] = (unsigned char)c;
             }
       }
 
@@ -181,14 +216,12 @@ fbwtdec (FILE *in, FILE *out)
       {
          arrcnt[r[i]]++;
       }
-
    sum = 0;
    for (i = 0; i < 256; i++)
       {
          first[i] = sum;
          sum += arrcnt[i];
       }
-
    T = malloc (n * sizeof (int));
    for (i = 0; i < n; i++)
       {
@@ -212,19 +245,16 @@ main (void)
 {
    FILE *fin, *fenc, *fbwt, *fdec;
 
-   fin = fopen ("test.txt", "rb");
-   if (!fin)
-      {
-         return 1;
-      }
-
+   fin  = fopen ("test.txt", "rb");
    fenc = fopen ("test.barc", "wb");
+
    fbwtenc (fin, fenc);
    fclose (fin);
    fclose (fenc);
 
    fbwt = fopen ("test.barc", "rb");
    fdec = fopen ("decoded.txt", "wb");
+
    fbwtdec (fbwt, fdec);
    fclose (fbwt);
    fclose (fdec);

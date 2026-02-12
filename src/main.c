@@ -1,5 +1,8 @@
-#include <stdint.h>
 #include <stdio.h>
+
+#include <assert.h>
+#include <ctype.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -58,7 +61,7 @@ bwtcmp (const void *a, const void *b)
 long
 fbwtenc (FILE *in, FILE *out)
 {
-   long startpos, endpos;
+   long startpos;
    int32_t n, primidx, rlecnt, i, rank;
    char *s;
    int32_t *idxs;
@@ -319,42 +322,166 @@ exarc (FILE *inarc)
 }
 
 int
-main (int argc, char *argv[])
+strcmpci (char const *str1, char const *str2)
 {
-   char mode;
-   FILE *arc;
-   int32_t i, eofmark;
-
-   if (argc < 3)
+   for (;;)
       {
-         printf ("[BARC COMPRESS]   BARC C ARCHIVE.BARC FILE1.TXT FILE2.TXT FILE3.TXT...\n");
-         printf ("[BARC DECOMPRESS] BARC X ARCHIVE.BARC\n");
+         int cmp = tolower (*str1) - tolower (*str2);
+         if (!*str1 || !*str2 || cmp != 0)
+            {
+               return cmp;
+            }
+         str1++, str2++;
+      }
+}
+
+void
+print_info (void)
+{
+#define pinfo(aspect, detail) printf ("   * %-17s %s\n", aspect, detail)
+   printf ("[INFO]\n");
+   printf ("   BARC -- A DEAD-SIMPLE, BWT-BASED FILE ARCHIVER AND COMPRESSOR.\n");
+   printf ("\n");
+   pinfo ("[AUTHOR]", "vs-123 @ https://github.com/vs-123");
+   pinfo ("[REPOSITORY]", "https://github.com/vs-123/barc");
+   pinfo ("[LICENSE]", "GNU AFFERO GENERAL PUBLIC LICENSE VERSION 3.0 OR LATER");
+#undef pinfo
+}
+
+void
+print_usage (const char *program_name)
+{
+#define popt(opt, desc) printf ("   %-45s %s\n", opt, desc)
+
+   printf ("=== BARC ===\n");
+   printf ("[USAGE] %s [OPTION]\n\n", program_name);
+   printf ("[OPTIONS]\n");
+   popt ("-c, --compress <ARCHIVE> <FILE> [<FILE>]...", "CREATE ARCHIVE <ARCHIVE> FROM FILE(S)");
+   popt ("-x, --extract <ARCHIVE>", "EXTRACT FILE(S) FROM <ARCHIVE>");
+   popt ("-h, -?, --help", "PRINT THIS HELP MESSAGE AND EXIT");
+   popt ("-i, --info", "VIEW INFORMATION ABOUT THIS PROGRAM");
+   printf ("\n");
+   printf ("[EXAMPLE]\n");
+   printf ("   %s -c archive.barc file1.txt file2.txt\n", program_name);
+   printf ("   %s -x archive.barc\n", program_name);
+   printf ("\n");
+   printf ("[NOTE] FLAGS ARE CASE-INSENSITIVE\n");
+
+#undef popt
+}
+
+typedef enum
+{
+   PROGRAM_MODE_COMPRESS,
+   PROGRAM_MODE_EXTRACT,
+   PROGRAM_MODE_NIL,
+} program_mode_t;
+
+int
+main (int argc, const char **argv)
+{
+   program_mode_t program_mode = PROGRAM_MODE_NIL;
+   const char *program_name    = argv[0];
+
+   if (argc < 2)
+      {
+         print_usage (program_name);
          return 1;
       }
 
-   mode = argv[1][0];
-   if (mode == 'c')
+   const char *arg = argv[1];
+   if (strcmpci (arg, "--info") == 0 || strcmpci (arg, "-i") == 0)
       {
-         arc = fopen (argv[2], "wb");
-         for (i = 3; i < argc; i++)
-            {
-               arcfile (argv[i], arc);
-            }
+         print_info ();
+         return 0;
+      }
+   else if (strcmpci (arg, "--help") == 0 || strcmpci (arg, "-h") == 0 || strcmpci (arg, "-?") == 0)
+      {
+         print_usage (program_name);
+         return 0;
+      }
+   else if (strcmpci (arg, "-c") == 0 || strcmpci (arg, "--compress") == 0)
+      {
+         program_mode = PROGRAM_MODE_COMPRESS;
+      }
+   else if (strcmpci (arg, "-x") == 0 || strcmpci (arg, "--extract") == 0)
+      {
+         program_mode = PROGRAM_MODE_EXTRACT;
+      }
+   else if (arg[0] == '-')
+      {
+         fprintf (stderr, "[BARC ERROR] INVALID FLAG, USE --HELP\n");
+         return 1;
+      }
+   else
+      {
+         fprintf (stderr, "[BARC ERROR] UNEXPECTED ARGUMENT, USE --HELP\n");
+         return 1;
+      }
 
-         eofmark = -1;
-         fwrite (&eofmark, sizeof (int32_t), 1, arc);
-         fclose (arc);
-         printf ("[BARC] ARCHIVED\n");
-      }
-   else if (mode == 'x')
+   switch (program_mode)
       {
-         arc = fopen (argv[2], "rb");
-         if (arc)
-            {
-               exarc (arc);
-               fclose (arc);
-            }
-         printf ("[BARC] EXTRACTED\n");
+      case PROGRAM_MODE_COMPRESS:
+         {
+            if (argc < 4)
+               {
+                  fprintf (stderr,
+                           "[BARC ERROR] COMPRESS REQUIRES <ARCHIVE> AND AT LEAST ONE <FILE>\n");
+                  return 1;
+               }
+
+            FILE *arc = fopen (argv[2], "wb");
+            if (!arc)
+               {
+                  fprintf (stderr, "[BARC ERROR] COULD NOT CREATE ARCHIVE %s\n", argv[2]);
+                  return 1;
+               }
+
+            for (int i = 3; i < argc; i++)
+               {
+                  arcfile (argv[i], arc);
+               }
+
+            int32_t eofmark = -1;
+            fwrite (&eofmark, sizeof (int32_t), 1, arc);
+            fclose (arc);
+            printf ("[BARC] ARCHIVED\n");
+         }
+         break;
+
+      case PROGRAM_MODE_EXTRACT:
+         {
+            if (argc != 3)
+               {
+                  fprintf (stderr, "[BARC ERROR] EXTRACT REQUIRES <ARCHIVE>\n");
+                  return 1;
+               }
+
+            FILE *arc = fopen (argv[2], "rb");
+            if (!arc)
+               {
+                  fprintf (stderr, "[BARC ERROR] COULD NOT OPEN ARCHIVE %s\n", argv[2]);
+                  return 1;
+               }
+
+            exarc (arc);
+            fclose (arc);
+            printf ("[BARC] EXTRACTED\n");
+         }
+         break;
+
+      case PROGRAM_MODE_NIL:
+         {
+            assert (0 && "[BARC] SECRET ENDING UNLOCKED");
+         }
+         break;
+
+      default:
+         {
+            assert (0 && "[BARC] UNHANDLED PROGRAM MODE");
+         }
+         break;
       }
+
    return 0;
 }

@@ -22,9 +22,9 @@ A dead-simple, BWT + MTF + RLE file-compressor archive tool in C.
 
 ## LIMITATIONS
 
-- Standard `qsort` was used on a suffix-pointer array instead of SA-IS because implementing SA-IS would triple the SLOC and would definitely not keep this dead-simple
+- **QSORT OVER SA-IS** -- Standard `qsort` was used on a suffix-pointer array instead of SA-IS because implementing SA-IS would triple the SLOC and would definitely not keep this dead-simple. It hits `O(n^2 log n)` in the worst case, and that happens more frequently on repetition-heavy data because qsort struggles with them
 
-- `bwtcmp` function performs modular arithmetic inside the hot loop. I'm aware that this potentially inhibits specific compiler optimisations + increases branch misprediction overhead, but I used this approach anyways to keep it simple (C's speed is a real advantage here haha). A more performant approach according to me would involve string doubling or padding
+- **HOT-LOOP OVERHEAD** -- `bwtcmp` function performs modular arithmetic inside the hot loop. I agree that this potentially inhibits compiler optimisations like SIMD auto-vectorisation and also increases branch misprediction overhead, but I used this approach anyways to keep it simple (C's speed is a real advantage here). A more performant approach according to me would involve string doubling or padding
 
 ## LICENSE
 

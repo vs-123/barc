@@ -54,7 +54,7 @@ You may now use the compiled binary:
 
 - **CASE-INSENSITIVE CLI** -- Basic command-line interface for compression and extraction, ignores flag casing for user convenience
 
-- **PORTABLE STANDARD C** -- Written in pure C99 using only the standard library. No OS-specific/POSIX/external libraries were used to keep this portable
+- **PORTABLE STANDARD C** -- Written in pure C99 using only the standard library. No OS-specific/POSIX/external libraries were used, thus keeping this project portable
 
 - **<500 SLOC** -- This project was written in less than 500 lines of code, including blank lines
 

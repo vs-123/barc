@@ -1,4 +1,4 @@
-BasedOnStyle: WebKit
+BasedOnStyle: GNU
 AlignConsecutiveMacros: true
 AlignConsecutiveAssignments: true
 AllowShortFunctionsOnASingleLine: false

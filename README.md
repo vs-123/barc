@@ -1,6 +1,6 @@
 # BARC
 
-A dead-simple, BWT + MTF + RLE file-compressor archive tool in C.
+A dead-simple, Burrows-Wheeler Transform + Move-To-Front Transform + Run-Length Encoding file-compressor archive tool written in C. This project is written in pure C99, no external libraries and no OS-specific/POSIX libraries were used.
 
 ## FEATURES
 

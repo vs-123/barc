@@ -16,7 +16,15 @@ A dead-simple, BWT + MTF + RLE file-compressor archive tool in C.
 
 - **CASE-INSENSITIVE CLI** -- Basic command-line interface for compression and extraction, ignores flag casing for user convenience
 
-- **STANDARD C** -- Written in pure C99 using only the standard library. No OS-specific/POSIX/external libraries were used.
+- **STANDARD C** -- Written in pure C99 using only the standard library. No OS-specific/POSIX/external libraries were used to keep this portable
+
+- **<500 SLOC** -- This project was written in less than 500 lines of code including blank newlines
+
+## LIMITATIONS
+
+- Standard `qsort` was used on a suffix-pointer array instead of SA-IS because implementing SA-IS would triple the SLOC and would definitely not keep this dead-simple
+
+- `bwtcmp` function performs modular arithmetic inside the hot loop. I'm aware that this potentially inhibits specific compiler optimisations + increases branch misprediction overhead, but I used this approach anyways to keep it simple (C's speed is a real advantage here haha). A more performant approach according to me would involve string doubling or padding
 
 ## LICENSE
 

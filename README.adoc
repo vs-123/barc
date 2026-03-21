@@ -1,0 +1,120 @@
+:em: {sp}--{sp}
+:license-link: https://www.gnu.org/licenses/agpl-3.0.en.html
+
+= BARC
+
+*barc* is a dead-simple, Burrows-Wheeler Transform + Move-To-Front Transform + Run-Length Encoding-based file-compressor archive tool written in C. This project is written in pure C99, no external libraries and no OS-specific/POSIX libraries were used.
+
+== BUILD INSTRUCTIONS & USAGE
+
+* Obtain a local copy of this repository using `git` and enter it
+
+[source,]
+----
+  %  git clone https://github.com/vs-123/barc.git
+  %  cd barc
+----
+
+* Create a build directory and enter it
++
+[source,]
+----
+  %  mkdir build/
+  %  cd build
+----
+
+=== CMAKE METHOD
+
+
+* Use CMake to generate build and link the project
++
+[source,]
+----
+  %  cmake ..
+  %  cmake --build .
+  %  ls -Fa
+  ./  ../  barc*  compiler_commands.json  Makefile
+----
+
+* You may now use the compiled executable
+
+[source,]
+----
+  %  ./barc
+  === BARC ===
+  [USAGE] ./barc [OPTION]
+  
+  [OPTIONS]
+     -c, --compress <ARCHIVE> <FILE> [<FILE>]...   CREATE ARCHIVE <ARCHIVE> FROM FILE(S)
+     -x, --extract <ARCHIVE>                       EXTRACT FILE(S) FROM <ARCHIVE>
+     -h, -?, --help                                PRINT THIS HELP MESSAGE AND EXIT
+     -i, --info                                    VIEW INFORMATION ABOUT THIS PROGRAM
+  
+  [EXAMPLE]
+     ./barc -c archive.barc file1.txt file2.txt
+     ./barc -x archive.barc
+  
+  [NOTE] FLAGS ARE CASE-INSENSITIVE
+----
+
+=== MANUAL METHOD
+
+* Compile `src/main.c` with a standard C99-compliant compiler of your choice
+```
+  %  clang -o barc ../src/main.c
+  %  ls -Fa
+  ./  ../  barc*
+```
+
+* You may now use the compiled executable
+
+[source,]
+----
+  %  ./barc
+  === BARC ===
+  [USAGE] ./barc [OPTION]
+  
+  [OPTIONS]
+     -c, --compress <ARCHIVE> <FILE> [<FILE>]...   CREATE ARCHIVE <ARCHIVE> FROM FILE(S)
+     -x, --extract <ARCHIVE>                       EXTRACT FILE(S) FROM <ARCHIVE>
+     -h, -?, --help                                PRINT THIS HELP MESSAGE AND EXIT
+     -i, --info                                    VIEW INFORMATION ABOUT THIS PROGRAM
+  
+  [EXAMPLE]
+     ./barc -c archive.barc file1.txt file2.txt
+     ./barc -x archive.barc
+  
+  [NOTE] FLAGS ARE CASE-INSENSITIVE
+----
+
+== FEATURES
+
+* *BURROWS-WHEELER TRANSFORM IMPLEMENTATION* {em} Utilises BWT to rearrange input into runs of similar characters. Uses basic `qsort` for cyclic shift
+
+* *LOCAL ADAPTIVE MOVE-TO-FRONT STAGE* {em} Performs standard MTF transformation after BWT to convert local character frequency into small integer values, prepares stream for redundancy reduction
+
+* *CHUNKED RUN-LENGTH ENCODING* {em} Custom RLE layer is applied MTF output, handles runs longer than 255 bytes by splitting them into chunks, keeps logic simple
+
+* *FILE ARCHIVING* {em} Supports ability to group multiple files into a single barc container. Includes basic metadata to facilitate restoration
+
+* *DETERMINISTIC SINGLE-PASS EXTRACTION* {em} Reverses transform pipeline using an inverse BWT algorithm. Restores file with a `BARC_EXT_` prefix
+
+* *CASE-INSENSITIVE CLI* {em} Basic command-line interface for compression and extraction, ignores flag casing for user convenience
+
+* *PORTABLE STANDARD C* {em} Written in pure C99 using only the standard library. No OS-specific/POSIX/external libraries were used, thus keeping this project portable
+
+* *<500 SLOC* {em} This project was written in less than 500 lines of code, including blank lines
+
+== LIMITATIONS
+
+* *QSORT OVER SA-IS* {em} Standard `qsort` was used on a suffix-pointer array instead of SA-IS because implementing SA-IS would triple the SLOC and would definitely not keep this dead-simple. It hits `O(n^2 log n)` in the worst case, and that happens more frequently on repetition-heavy data because qsort struggles with them
+
+* *HOT-LOOP OVERHEAD* {em} `bwtcmp` function performs modular arithmetic inside the hot loop. I agree that this potentially inhibits compiler optimisations like SIMD auto-vectorisation and also increases branch misprediction overhead, but I used this approach anyways to keep it simple (C's speed is a real advantage here). A more performant approach according to me would involve string doubling or padding
+
+== LICENSE
+
+This project is licensed under the *GNU Affero General Public License version 3.0 or later*.
+
+*NO WARRANTY PROVIDED*
+
+For more information, see `LICENSE` file or visit {license-link}.

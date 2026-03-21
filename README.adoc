@@ -8,7 +8,7 @@
 == BUILD INSTRUCTIONS & USAGE
 
 * Obtain a local copy of this repository using `git` and enter it
-
++
 [source,]
 ----
   %  git clone https://github.com/vs-123/barc.git
@@ -37,7 +37,7 @@
 ----
 
 * You may now use the compiled executable
-
++
 [source,]
 ----
   %  ./barc
@@ -60,14 +60,16 @@
 === MANUAL METHOD
 
 * Compile `src/main.c` with a standard C99-compliant compiler of your choice
-```
++
+[source,]
+----
   %  clang -o barc ../src/main.c
   %  ls -Fa
   ./  ../  barc*
-```
+----
 
 * You may now use the compiled executable
-
++
 [source,]
 ----
   %  ./barc
